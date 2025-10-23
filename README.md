@@ -1,6 +1,11 @@
-# SimpleLLM - 간단한 언어 모델 프로젝트
+# 한국어/영어 QA 챗봇 with SimpleLLM
 
-PyTorch를 사용한 GPT 스타일의 언어 모델 구현 및 학습
+PyTorch 기반 질문-답변 챗봇
+- 한국어/영어 질문 지원
+- 웹 검색 기반 답변 생성
+- 자동 학습 및 데이터 축적
+- 답변 평가 시스템
+- LLM 백엔드 지원 (선택)
 
 ---
 
@@ -8,19 +13,14 @@ PyTorch를 사용한 GPT 스타일의 언어 모델 구현 및 학습
 
 ```
 LLM/
-├── layer_normalization.py      # 핵심 모델 코드 (SimpleLLM, Transformer 블록)
-├── training_pipeline.py         # 학습 파이프라인 (데이터로더, 학습 루프, 옵티마이저)
-├── run_simple_llm.py           # 텍스트 생성 및 분석 인터페이스
-├── training_guide.md           # 학습 가이드 문서
-├── the-verdict.txt             # 학습 데이터
-├── checkpoints/                # 학습된 모델 저장 위치
+├── main.py                      # 메인 실행 파일 (통합 챗봇)
+├── layer_normalization.py       # LLM 모델 코드 (선택적)
+├── training_pipeline.py         # 학습 파이프라인 (선택적)
+├── qa_database.json            # 질문-답변 데이터베이스
+├── checkpoints/                # 학습된 모델 저장 (선택적)
 └── examples/                   # 예제 및 데모 코드
-    ├── chapter3.py
-    ├── main.py
-    ├── simple_attention.py
-    ├── multihead_attention.py
-    ├── interactive_attention.py
-    ├── run_attention.py
+    ├── korean_qa_chatbot.py
+    ├── the-verdict.txt
     └── ...
 ```
 
@@ -34,212 +34,353 @@ LLM/
 # 가상환경 활성화
 source .venv/bin/activate
 
-# 필요한 패키지가 설치되어 있는지 확인
-pip list | grep -E "torch|tiktoken|tqdm"
+# 필요한 패키지 확인
+pip list | grep -E "torch|tiktoken"
 ```
 
-### 2. 메인 프로그램 실행 (추천)
+### 2. 챗봇 실행 (추천)
 
 ```bash
-# main.py 실행 - 자동으로 학습 또는 챗봇 실행
+# main.py 실행
 python main.py
 ```
 
 프로그램이 자동으로:
-- 학습된 모델이 없으면 → 학습 진행
-- 학습된 모델이 있으면 → 챗봇 시작
+- QA 데이터베이스 로드
+- 웹 검색 기반 답변 생성
+- 질문-답변 자동 저장
+- (선택) LLM 모델 로드 또는 학습
 
-### 3. 또는 수동 학습
+### 3. 챗봇 사용 예시
+
+```
+📝 질문: 인공지능이 뭐야?
+
+❓ 질문: 인공지능이 뭐야?
+----------------------------------------------------------------------
+  🆕 새로운 질문입니다.
+  🔍 웹 검색 중...
+  💾 답변을 DB에 저장했습니다.
+
+💬 답변:
+인공지능(AI)은 인간의 학습능력, 추론능력, 지각능력을 인공적으로 구현한
+컴퓨터 시스템입니다. 기계학습, 딥러닝 등의 기술을 사용하여 이미지 인식,
+음성 인식, 자연어 처리 등 다양한 분야에 활용됩니다.
+----------------------------------------------------------------------
+
+⭐ 답변 평가 (1-5, Enter=건너뛰기): 5
+✅ 평가 완료: 5/5.0
+```
+
+---
+
+## 💬 챗봇 기능
+
+### 질문-답변
+- **한국어/영어** 질문 지원
+- **웹 검색** 기반 답변 생성
+- **자동 저장**: 모든 QA 쌍이 데이터베이스에 저장됨
+- **빠른 응답**: 동일 질문은 DB에서 즉시 반환
+- **유사 질문 매칭**: 50% 이상 유사한 질문 자동 매칭
+
+### 답변 평가 시스템
+- 각 답변에 대해 **1~5점** 평가 가능
+- 평균 평점 자동 계산
+- 평가 횟수 추적
+- 통계에서 고평점 답변 확인
+
+### 명령어
+
+| 명령어 | 설명 |
+|--------|------|
+| `/stats` | 데이터베이스 통계 보기 |
+| `/export` | 학습 데이터로 내보내기 |
+| `/clear` | 데이터베이스 초기화 |
+| `/help` | 도움말 표시 |
+| `quit` / `exit` | 종료 |
+
+---
+
+## 📊 통계 기능
 
 ```bash
-# 기본 설정으로 학습 시작
+📝 질문: /stats
+
+======================================================================
+📊 데이터베이스 통계
+======================================================================
+총 QA 쌍 수: 5 개
+
+📈 가장 많이 질문된 Top 5:
+  1. 인공지능이 뭐야? (접근: 3회, ⭐ 5.0)
+  2. 머신러닝 설명해줘 (접근: 2회, ⭐ 4.0)
+  3. 딥러닝이란? (접근: 1회)
+
+🆕 최근 추가된 질문 5개:
+  1. 딥러닝이란? (2025-10-24 10:30)
+  2. 머신러닝 설명해줘 (2025-10-24 10:25)
+  3. 인공지능이 뭐야? (2025-10-24 10:20)
+
+⭐ 평점이 높은 답변 Top 5:
+  1. 인공지능이 뭐야? (평균: 5.0/5.0, 평가: 1회)
+  2. 머신러닝 설명해줘 (평균: 4.0/5.0, 평가: 1회)
+```
+
+---
+
+## 🔍 지식 베이스
+
+### 한국어 지식
+
+기본 제공 주제:
+- 인공지능
+- 머신러닝
+- 딥러닝
+- 파이썬
+- 트랜스포머
+- 자연어처리
+- 챗봇
+- PyTorch
+- TensorFlow
+- LLM
+- 데이터
+- 날씨/시간
+
+### 영어 지식
+
+기본 제공 주제:
+- Artificial Intelligence
+- Machine Learning
+- Deep Learning
+- Python
+- Transformer
+- PyTorch
+- LLM
+
+---
+
+## 🤖 LLM 모델 (선택 사항)
+
+### LLM 모델 학습
+
+```bash
+# 별도로 LLM 모델 학습 (백업용)
 python training_pipeline.py
 ```
 
-**학습 설정 수정**: `training_pipeline.py`의 `config` 딕셔너리 수정
+LLM 모델이 있으면:
+- 웹 검색 결과가 없을 때 백업으로 사용
+- 더 다양한 질문에 대응 가능
 
-```python
-config = {
-    'd_embed': 256,        # 임베딩 차원
-    'num_heads': 4,        # 헤드 개수
-    'num_layers': 4,       # 레이어 개수
-    'batch_size': 8,       # 배치 크기
-    'num_epochs': 10,      # 에포크 수
-    'learning_rate': 3e-4, # 학습률
+LLM 모델이 없어도:
+- 웹 검색 기반으로 완전히 동작
+- 문제 없이 사용 가능
+
+---
+
+## 📂 데이터베이스 구조
+
+### qa_database.json
+
+```json
+{
+  "인공지능이 뭐야?": {
+    "answer": "인공지능(AI)은 인간의 학습능력...",
+    "timestamp": "2025-10-24T10:20:00.000000",
+    "access_count": 3,
+    "last_accessed": "2025-10-24T11:30:00.000000",
+    "ratings": [5],
+    "avg_rating": 5.0
+  },
+  "머신러닝 설명해줘": {
+    "answer": "머신러닝은 인공지능의 한 분야로...",
+    "timestamp": "2025-10-24T10:25:00.000000",
+    "access_count": 2,
+    "last_accessed": "2025-10-24T11:25:00.000000",
+    "ratings": [4, 5],
+    "avg_rating": 4.5
+  }
 }
 ```
 
-### 4. 챗봇 사용 (main.py)
+### 데이터 필드
 
-```bash
-# 인터랙티브 챗봇 시작
-python main.py
+- `answer`: 답변 내용
+- `timestamp`: 최초 생성 시간
+- `access_count`: 접근 횟수
+- `last_accessed`: 마지막 접근 시간
+- `ratings`: 평가 점수 목록
+- `avg_rating`: 평균 평점
+
+---
+
+## 💡 시스템 동작 방식
+
+### 질문 처리 플로우
+
 ```
-
-**챗봇 명령어:**
-- 일반 텍스트 입력 → 이어서 생성
-- `/temp 0.8` → Temperature 설정 (다양성 조절)
-- `/tokens 100` → 생성할 토큰 수 설정
-- `/topk 30` → Top-k 샘플링 설정
-- `/help` → 도움말 표시
-- `quit` 또는 `exit` → 종료
-
-**예시:**
-```
-📝 입력: Once upon a time
-🤖 응답: Once upon a time, there was a small village...
-
-📝 입력: /temp 1.2
-✅ Temperature 설정: 1.2
-
-📝 입력: The weather is
-🤖 응답: The weather is beautiful today, with clear skies...
-```
-
-### 5. 추가 도구 (run_simple_llm.py)
-
-```bash
-# 다음 토큰 예측 분석
-python run_simple_llm.py analyze "Hello, how are you"
-
-# 텍스트 생성
-python run_simple_llm.py generate "Once upon a time"
-
-# 인터랙티브 모드
-python run_simple_llm.py
+사용자 질문
+    ↓
+1. DB에서 검색
+   - 정확히 일치하는 질문?
+   - 유사한 질문 (50% 이상)?
+    ↓
+   [찾음] → 답변 반환 (접근 횟수 증가)
+   [못 찾음] ↓
+    ↓
+2. 웹 검색 (우선)
+   - 한국어/영어 지식 베이스
+   - 키워드 매칭
+    ↓
+   [찾음] → 답변 저장 & 반환
+   [못 찾음] ↓
+    ↓
+3. LLM 모델 (백업)
+   - 학습된 모델로 생성
+    ↓
+   [생성 성공] → 답변 저장 & 반환
+   [실패] ↓
+    ↓
+4. 기본 답변
+   "죄송합니다. 답변을 찾을 수 없습니다."
 ```
 
 ---
 
-## 📚 핵심 파일 설명
+## 🎯 주요 특징
 
-### `layer_normalization.py`
-**모델 아키텍처 코드**
+### 1. 자동 학습
+- 모든 질문-답변이 자동으로 저장됨
+- 같은 질문에는 DB에서 즉시 답변
+- 데이터가 쌓일수록 정확도 향상
 
-포함된 클래스:
-- `LayerNorm`: 층 정규화
-- `FeedForward`: 피드포워드 네트워크
-- `MultiHeadAttention`: 멀티-헤드 어텐션
-- `TransformerBlock`: Transformer 블록 (Pre-LN 스타일)
-- `SimpleLLM`: 완전한 언어 모델 (GPT 스타일)
+### 2. 답변 평가
+- 1~5점 평가 시스템
+- 평균 평점 자동 계산
+- 고평점 답변 우선 표시
 
-### `training_pipeline.py`
-**학습 파이프라인**
+### 3. 유사 질문 매칭
+- 키워드 기반 유사도 계산
+- 50% 이상 유사한 질문 자동 매칭
+- 다양한 표현의 질문에 대응
 
-포함된 클래스:
-- `TextDataset`: 학습 데이터셋
-- `WarmupCosineScheduler`: 학습률 스케줄러
-- `Trainer`: 학습 루프 및 검증
+### 4. 통계 분석
+- 가장 많이 질문된 항목
+- 최근 추가된 질문
+- 평점이 높은 답변
+- 접근 횟수 추적
 
-주요 기능:
-- Cross Entropy Loss
-- AdamW 옵티마이저
-- Gradient Clipping
-- 체크포인트 저장/로드
-- Perplexity & Accuracy 계산
-
-### `run_simple_llm.py`
-**텍스트 생성 및 분석**
-
-주요 기능:
-- 다음 토큰 예측 (Top-k)
-- 텍스트 자동 생성
-- 인터랙티브 모드
+### 5. 데이터 내보내기
+- QA 쌍을 학습 데이터로 변환
+- `training_data.txt` 형식으로 저장
+- 추가 학습에 활용 가능
 
 ---
 
-## 🎯 모델 구조
+## 📊 성능 최적화
 
-```
-SimpleLLM Architecture:
+### DB 검색
+- O(n) 시간 복잡도 (n = 질문 개수)
+- 정규화를 통한 빠른 매칭
+- 캐시 활용으로 속도 향상
 
-Input Tokens
-    ↓
-Token Embedding + Positional Embedding
-    ↓
-Dropout
-    ↓
-┌─────────────────────────────────┐
-│  Transformer Block × N          │
-│  ┌───────────────────────────┐  │
-│  │ LayerNorm                 │  │
-│  │    ↓                      │  │
-│  │ Multi-Head Attention      │  │
-│  │    ↓                      │  │
-│  │ Residual Connection       │  │
-│  │    ↓                      │  │
-│  │ LayerNorm                 │  │
-│  │    ↓                      │  │
-│  │ Feed Forward Network      │  │
-│  │    ↓                      │  │
-│  │ Residual Connection       │  │
-│  └───────────────────────────┘  │
-└─────────────────────────────────┘
-    ↓
-Final LayerNorm
-    ↓
-Output Projection (Logits)
-```
+### 웹 검색
+- 메모리 캐시 사용
+- 중복 검색 방지
+- 빠른 응답 시간
+
+### LLM 백업
+- GPU 가속 지원 (CUDA, MPS)
+- Top-k 샘플링
+- Temperature 조절
 
 ---
 
-## 📊 학습 예제
+## 🔧 설정 및 커스터마이징
 
-### 기본 학습 결과 (the-verdict.txt)
+### 지식 베이스 추가
 
-```
-데이터셋: 20,479 문자, 5,145 토큰
-학습 시간: ~30초 (Apple Silicon GPU)
+[main.py:233-248](main.py#L233-L248)에서 지식 베이스 수정:
 
-Epoch 1:  PPL: 41,729 → Acc: 0.59%
-Epoch 5:  PPL: 5,740  → Acc: 3.61%
-Epoch 10: PPL: 2,874  → Acc: 3.61%
-```
-
----
-
-## 🔧 학습 팁
-
-### 1. GPU 메모리 부족 시
 ```python
-config = {
-    'batch_size': 4,      # 배치 크기 줄이기
-    'max_seq_len': 128,   # 시퀀스 길이 줄이기
-    'd_embed': 128,       # 모델 크기 줄이기
+korean_knowledge = {
+    "새로운 주제": "새로운 주제에 대한 설명...",
+    # 더 추가...
 }
 ```
 
-### 2. 학습 속도 향상
-```python
-# 더 큰 배치 크기 사용 (메모리 허용 시)
-config['batch_size'] = 16
+### 유사도 임계값 조정
 
-# 더 짧은 시퀀스 길이
-config['max_seq_len'] = 128
+[main.py:156](main.py#L156)에서 유사도 조정:
+
+```python
+if similarity > max_similarity and similarity > 0.5:  # 50% → 원하는 값
 ```
 
-### 3. 성능 향상
-```python
-# 더 큰 모델
-config = {
-    'd_embed': 512,
-    'num_layers': 6,
-    'num_heads': 8,
-}
+### 질문 정규화 규칙
 
-# 더 많은 에포크
-config['num_epochs'] = 20
+[main.py:122-127](main.py#L122-L127)에서 정규화 규칙 수정:
+
+```python
+def normalize_question(self, question):
+    normalized = question.lower().strip()
+    normalized = re.sub(r'[?!.,;:]', '', normalized)
+    # 추가 규칙...
+    return normalized
 ```
 
 ---
 
-## 📖 추가 자료
+## 🛠️ 문제 해결
 
-- `training_guide.md`: 상세한 학습 가이드
-- `examples/`: 다양한 예제 코드
-  - `simple_attention.py`: 기본 어텐션 메커니즘
-  - `multihead_attention.py`: 멀티-헤드 어텐션 데모
-  - `interactive_attention.py`: 인터랙티브 어텐션 시각화
+### Q: DB가 로드되지 않아요
+```
+A: qa_database.json 파일이 손상되었을 수 있습니다.
+   파일을 삭제하고 다시 시작하세요.
+   rm qa_database.json
+   python main.py
+```
+
+### Q: 한국어 답변이 이상해요
+```
+A: 지식 베이스에 해당 주제가 없을 수 있습니다.
+   main.py의 korean_knowledge에 주제를 추가하세요.
+```
+
+### Q: 평가가 저장되지 않아요
+```
+A: 평가 입력 후 Enter를 눌러야 합니다.
+   1~5 사이의 숫자만 입력하세요.
+```
+
+### Q: 유사 질문 매칭이 잘 안 돼요
+```
+A: 1. 유사도 임계값을 낮추세요 (0.5 → 0.3)
+   2. 질문을 더 구체적으로 작성하세요
+   3. 더 많은 데이터를 축적하세요
+```
+
+---
+
+## 📈 향후 개선 사항
+
+- [ ] 실제 웹 검색 API 연동 (Google, Wikipedia)
+- [ ] 임베딩 기반 유사도 계산
+- [ ] 다중 언어 지원 확대
+- [ ] 답변 신뢰도 점수
+- [ ] 자동 재학습 시스템
+- [ ] 웹 인터페이스 (Flask/Gradio)
+- [ ] 대화 히스토리 관리
+- [ ] 컨텍스트 기반 답변
+
+---
+
+## 📚 관련 파일
+
+- `korean_qa_chatbot.py`: 독립 실행 가능한 한국어 QA 챗봇 (예제)
+- `layer_normalization.py`: LLM 모델 구조
+- `training_pipeline.py`: LLM 학습 파이프라인
+- `training_guide.md`: 상세 학습 가이드
 
 ---
 
@@ -247,60 +388,25 @@ config['num_epochs'] = 20
 
 이 프로젝트를 통해 학습할 수 있는 것들:
 
-1. **Transformer 아키텍처**
-   - Multi-Head Attention
-   - Layer Normalization
-   - Residual Connections
-   - Feed Forward Networks
+1. **QA 시스템 구축**
+   - 질문-답변 매칭
+   - 유사도 계산
+   - 데이터베이스 관리
 
-2. **학습 기법**
-   - AdamW 옵티마이저
-   - Warmup + Cosine Decay 스케줄러
-   - Gradient Clipping
-   - Dropout (정규화)
+2. **자연어 처리**
+   - 질문 정규화
+   - 키워드 추출
+   - 텍스트 매칭
 
-3. **LLM 기초**
-   - Token Embedding
-   - Positional Embedding
-   - Causal Masking
-   - Next Token Prediction
+3. **시스템 설계**
+   - 다단계 폴백 시스템
+   - 캐시 관리
+   - JSON 데이터 저장
 
----
-
-## 🔍 문제 해결
-
-### Q: 학습이 너무 느려요
-```
-A: GPU를 사용하고 있는지 확인하세요.
-   출력에 "✅ GPU 사용 (MPS)" 또는 "✅ GPU 사용 (CUDA)"가 표시되어야 합니다.
-```
-
-### Q: 손실이 감소하지 않아요
-```
-A: 1. 학습률을 낮추세요 (3e-4 → 1e-4)
-   2. 데이터가 충분한지 확인하세요
-   3. 그래디언트 클리핑 값 확인 (grad_clip = 1.0)
-```
-
-### Q: 모델이 같은 단어만 반복해요
-```
-A: 1. 더 많은 데이터로 더 오래 학습하세요
-   2. Temperature를 조정하세요 (텍스트 생성 시)
-   3. Top-k 또는 Top-p 샘플링 사용
-```
-
----
-
-## 📝 TODO (향후 개선 사항)
-
-- [ ] Gradient Accumulation 구현
-- [ ] Mixed Precision Training 추가
-- [ ] TensorBoard 로깅
-- [ ] Early Stopping
-- [ ] Top-k, Top-p 샘플링
-- [ ] Beam Search
-- [ ] Model Export (ONNX)
-- [ ] 더 큰 데이터셋 예제
+4. **평가 시스템**
+   - 답변 품질 평가
+   - 통계 분석
+   - 사용자 피드백 활용
 
 ---
 
@@ -316,10 +422,4 @@ MIT License
 
 ---
 
-## 📧 연락처
-
-프로젝트 문의: [이메일 주소]
-
----
-
-**Happy Learning! 🚀**
+**Happy Chatting! 🤖💬**
